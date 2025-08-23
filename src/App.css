@@ -1,28 +1,40 @@
 .App {
   text-align: center;
-}
-
-.App-header {
-  background-color: #282c34;
   padding: 20px;
+}
+
+.controls {
+  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.controls div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.controls button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #007acc;
   color: white;
-  border-radius: 8px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
-.App-header h1 {
-  margin: 0 0 20px 0;
-  font-size: 2.5rem;
+.controls button:hover {
+  background-color: #005a99;
 }
 
-.App-header p {
-  margin: 10px 0;
-  font-size: 1.1rem;
-}
-
-code {
-  background-color: #f1f1f1;
-  color: #333;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
+.simulators-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 30px;
 }
