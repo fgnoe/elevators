@@ -1,0 +1,115 @@
+.simulator-card {
+  width: 400px;
+  height: 400px;
+  border: 2px solid #333;
+  border-radius: 8px;
+  background-color: #f5f5f5;
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.speed-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.speed-control label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+}
+
+.speed-control input {
+  width: 150px;
+}
+
+.building-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.building {
+  width: 200px;
+  height: 300px;
+  border: 3px solid #000;
+  background-color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.floor-label {
+  position: absolute;
+  left: -50px;
+  padding-top: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+  white-space: nowrap;
+}
+
+.simulator-box {
+  width: 30px;
+  background-color: #007acc;
+  border-radius: 4px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.floor-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #333;
+  z-index: 1;
+}
+
+.floor-number {
+  position: absolute;
+  left: 10px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+  z-index: 2;
+}
+
+.floor-people {
+  position: absolute;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+  z-index: 2;
+}
+
+.elevator-people {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
