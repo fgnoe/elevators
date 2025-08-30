@@ -2,8 +2,8 @@ import { create } from 'zustand'
 import useSimulatorStore from './simulatorStore'
 
 const useAppStore = create((set, get) => ({
-  simulators: [{ id: 1 }],
-  floorCount: 2,
+  simulators: [{ id: 1 }, { id: 2 }],
+  floorCount: 4,
   
   setFloorCount: (count) => {
     const { simulators } = get()
@@ -22,10 +22,15 @@ const useAppStore = create((set, get) => ({
     set({ simulators: [...simulators, { id: newId }] })
   },
   
-  moveElevator: () => {
-    const { simulators, floorCount } = get()
+  startSimulations: () => {
+    const { simulators } = get()
     simulators.forEach(simulator => {
-      useSimulatorStore.getState().moveElevator(simulator.id, floorCount)
+      const simulatorState = useSimulatorStore.getState().simulators[simulator.id]
+      if (simulatorState && simulatorState.floorPeople[0] === 0) {
+        useSimulatorStore.getState().addPerson(simulator.id)
+      } else {
+        useSimulatorStore.getState().checkAndStartAutomaticMovement(simulator.id)
+      }
     })
   },
 

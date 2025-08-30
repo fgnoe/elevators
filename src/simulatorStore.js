@@ -75,43 +75,34 @@ const useSimulatorStore = create((set, get) => ({
       }
     })
   },
-  
-  moveElevator: (id, floorCount) => {
+
+  checkAndStartAutomaticMovement: (id) => {
     const { simulators } = get()
     const simulator = simulators[id]
     
     if (!simulator || simulator.isAnimating) return
     
-    const { currentFloor, direction, speed, floorPeople, elevatorPeople } = simulator
-    let newFloor = currentFloor
-    let newDirection = direction
+    if (simulator.floorPeople[0] > 0) {
+      if (simulator.currentFloor !== 0) {
+        get().moveToGroundFloor(id)
+      } else {
+        get().moveElevator(id, simulator.floorCount)
+      }
+    }
+  },
+
+  moveToGroundFloor: (id) => {
+    const { simulators } = get()
+    const simulator = simulators[id]
+    
+    if (!simulator || simulator.isAnimating || simulator.currentFloor === 0) return
+    
+    const { speed, floorPeople, elevatorPeople } = simulator
     let newFloorPeople = [...floorPeople]
     let newElevatorPeople = elevatorPeople
     
-    if (currentFloor === 0 && newFloorPeople[0] > 0) {
-      const peopleToMove = Math.min(newFloorPeople[0], 10 - newElevatorPeople)
-      newFloorPeople[0] -= peopleToMove
-      newElevatorPeople += peopleToMove
-    }
-    
-    if (direction === 'up') {
-      if (currentFloor < floorCount - 1) {
-        newFloor = currentFloor + 1
-      } else {
-        newDirection = 'down'
-        newFloor = currentFloor - 1
-      }
-    } else {
-      if (currentFloor > 0) {
-        newFloor = currentFloor - 1
-      } else {
-        newDirection = 'up'
-        newFloor = currentFloor + 1
-      }
-    }
-    
-    if (newFloor === floorCount - 1 && newElevatorPeople > 0) {
-      newFloorPeople[newFloor] += newElevatorPeople
+    if (simulator.currentFloor === simulator.floorCount - 1 && newElevatorPeople > 0) {
+      newFloorPeople[simulator.currentFloor] += newElevatorPeople
       newElevatorPeople = 0
     }
     
@@ -121,8 +112,8 @@ const useSimulatorStore = create((set, get) => ({
         [id]: {
           ...simulator,
           isAnimating: true,
-          currentFloor: newFloor,
-          direction: newDirection,
+          currentFloor: 0,
+          direction: 'up',
           floorPeople: newFloorPeople,
           elevatorPeople: newElevatorPeople
         }
@@ -132,17 +123,118 @@ const useSimulatorStore = create((set, get) => ({
     setTimeout(() => {
       const { simulators: currentSimulators } = get()
       if (currentSimulators[id]) {
+        const currentSim = currentSimulators[id]
+        let updatedFloorPeople = [...currentSim.floorPeople]
+        let updatedElevatorPeople = currentSim.elevatorPeople
+        
+        if (updatedFloorPeople[0] > 0) {
+          const peopleToMove = Math.min(updatedFloorPeople[0], 10 - updatedElevatorPeople)
+          updatedFloorPeople[0] -= peopleToMove
+          updatedElevatorPeople += peopleToMove
+        }
+        
         set({
           simulators: {
             ...currentSimulators,
             [id]: {
-              ...currentSimulators[id],
-              isAnimating: false
+              ...currentSim,
+              isAnimating: false,
+              floorPeople: updatedFloorPeople,
+              elevatorPeople: updatedElevatorPeople
             }
           }
         })
+        
+        setTimeout(() => {
+          if (updatedElevatorPeople > 0) {
+            get().moveToTopFloor(id)
+          }
+        }, 400)
       }
     }, speed)
+  },
+
+  moveToTopFloor: (id) => {
+    const { simulators } = get()
+    const simulator = simulators[id]
+    
+    if (!simulator || simulator.isAnimating) return
+    
+    const { speed, floorCount, floorPeople, elevatorPeople } = simulator
+    let newFloorPeople = [...floorPeople]
+    let newElevatorPeople = elevatorPeople
+    
+    set({
+      simulators: {
+        ...simulators,
+        [id]: {
+          ...simulator,
+          isAnimating: true,
+          currentFloor: floorCount - 1,
+          direction: 'down',
+          floorPeople: newFloorPeople,
+          elevatorPeople: newElevatorPeople
+        }
+      }
+    })
+    
+    setTimeout(() => {
+      const { simulators: currentSimulators } = get()
+      if (currentSimulators[id]) {
+        const currentSim = currentSimulators[id]
+        let updatedFloorPeople = [...currentSim.floorPeople]
+        
+        updatedFloorPeople[floorCount - 1] += currentSim.elevatorPeople
+        
+        set({
+          simulators: {
+            ...currentSimulators,
+            [id]: {
+              ...currentSim,
+              isAnimating: false,
+              floorPeople: updatedFloorPeople,
+              elevatorPeople: 0
+            }
+          }
+        })
+        
+        setTimeout(() => {
+          get().checkAndStartAutomaticMovement(id)
+        }, 400)
+      }
+    }, speed)
+  },
+  
+  moveElevator: (id, floorCount) => {
+    const { simulators } = get()
+    const simulator = simulators[id]
+
+    if (!simulator || simulator.isAnimating) return
+
+    const { floorPeople, elevatorPeople } = simulator
+    let newFloorPeople = [...floorPeople]
+    let newElevatorPeople = elevatorPeople
+
+    if (simulator.currentFloor === 0 && newFloorPeople[0] > 0) {
+      const peopleToMove = Math.min(newFloorPeople[0], 10 - newElevatorPeople)
+      newFloorPeople[0] -= peopleToMove
+      newElevatorPeople += peopleToMove
+
+      set({
+        simulators: {
+          ...simulators,
+          [id]: {
+            ...simulator,
+            floorPeople: newFloorPeople,
+            elevatorPeople: newElevatorPeople
+          }
+        }
+      })
+
+      setTimeout(() => {
+        get().moveToTopFloor(id)
+      }, 400)
+    }
   }
 }))
 
