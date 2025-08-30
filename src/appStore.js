@@ -24,21 +24,30 @@ const useAppStore = create((set, get) => ({
   
   startSimulations: () => {
     const { simulators } = get()
+    // First add some people using the new addPerson function
     simulators.forEach(simulator => {
-      const simulatorState = useSimulatorStore.getState().simulators[simulator.id]
-      if (simulatorState && simulatorState.floorPeople[0] === 0) {
-        useSimulatorStore.getState().addPerson(simulator.id)
-      } else {
+      get().addPerson()
+    })
+    // Then start the automatic movement
+    simulators.forEach(simulator => {
         useSimulatorStore.getState().checkAndStartAutomaticMovement(simulator.id)
-      }
     })
   },
 
   addPerson: () => {
-    const { simulators } = get()
-    simulators.forEach(simulator => {
-      useSimulatorStore.getState().addPerson(simulator.id)
-    })
+    const { floorCount } = get()
+    
+    // Generate random origin floor (0 to floorCount-1)
+    const origin = Math.floor(Math.random() * floorCount)
+    
+    // Generate random destination floor (different from origin)
+    let destination
+    do {
+      destination = Math.floor(Math.random() * floorCount)
+    } while (destination === origin)
+    
+    // Call simulatorStore addPerson with origin and destination
+    useSimulatorStore.getState().addPerson(origin, destination)
   }
 }))
 

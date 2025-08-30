@@ -11,8 +11,8 @@ function Simulator({ simulatorId }) {
     initializeSimulator(simulatorId, floorCount)
   }, [simulatorId, floorCount, initializeSimulator])
   
-  const simulator = simulators[simulatorId] || { currentFloor: 0, isAnimating: false, speed: 1000, floorPeople: Array(floorCount).fill(0), elevatorPeople: 0 }
-  const { currentFloor, isAnimating, speed, floorPeople, elevatorPeople } = simulator
+  const simulator = simulators[simulatorId] || { currentFloor: 0, isAnimating: false, speed: 1000, floorQueues: Array(floorCount).fill(null).map(() => []), elevatorQueue: [] }
+  const { currentFloor, isAnimating, speed, floorQueues, elevatorQueue } = simulator
   
   const simulatorHeight = 300
   const elevatorHeight = simulatorHeight / floorCount
@@ -59,7 +59,7 @@ function Simulator({ simulatorId }) {
                   top: `${(floorCount - 1 - floor) * elevatorHeight + elevatorHeight / 2 - 10}px`
                 }}
               >
-                {floorPeople[floor] || 0}
+                {floorQueues[floor]?.length || 0}
               </div>
             </div>
           ))}
@@ -72,7 +72,7 @@ function Simulator({ simulatorId }) {
             }}
           >
             <div className="elevator-people">
-              {elevatorPeople}
+              {elevatorQueue?.length || 0}
             </div>
           </div>
         </div>

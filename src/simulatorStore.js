@@ -1,5 +1,12 @@
 import { create } from 'zustand'
 
+// Person object structure
+const createPerson = (destinationFloor) => ({
+  id: Math.random().toString(36).substr(2, 9),
+  destinationFloor,
+  timestamp: Date.now()
+})
+
 const useSimulatorStore = create((set, get) => ({
   simulators: {},
   
@@ -16,8 +23,8 @@ const useSimulatorStore = create((set, get) => ({
             direction: 'up',
             speed: 1000,
             floorCount,
-            floorPeople: Array(floorCount).fill(0),
-            elevatorPeople: 0
+            floorQueues: Array(floorCount).fill(null).map(() => []), // Queue of people for each floor
+            elevatorQueue: [] // Queue of people in elevator
           }
         }
       })
@@ -48,32 +55,64 @@ const useSimulatorStore = create((set, get) => ({
             isAnimating: false,
             direction: 'up',
             floorCount,
-            floorPeople: Array(floorCount).fill(0),
-            elevatorPeople: 0
+            floorQueues: Array(floorCount).fill(null).map(() => []),
+            elevatorQueue: []
           }
         }
       })
     }
   },
 
-  addPerson: (id) => {
+  addPerson: (origin, destination) => {
+    const { simulators } = get()
+    
+    // Create person with specified destination
+    const newPerson = createPerson(destination)
+    
+    // Add person to origin floor of ALL simulations
+    const updatedSimulators = {}
+    Object.keys(simulators).forEach(id => {
+      const simulator = simulators[id]
+      if (simulator && origin >= 0 && origin < simulator.floorCount) {
+        const newFloorQueues = [...simulator.floorQueues]
+        newFloorQueues[origin] = [...newFloorQueues[origin], newPerson]
+        
+        updatedSimulators[id] = {
+          ...simulator,
+          floorQueues: newFloorQueues
+        }
+      } else {
+        updatedSimulators[id] = simulator
+      }
+    })
+    
+    set({
+      simulators: updatedSimulators
+    })
+  },
+
+  findNearestFloorWithPeople: (id) => {
     const { simulators } = get()
     const simulator = simulators[id]
     
-    if (!simulator) return
+    if (!simulator) return -1
     
-    const newFloorPeople = [...simulator.floorPeople]
-    newFloorPeople[0] += 1
+    const { currentFloor, floorQueues } = simulator
+    let nearestFloor = -1
+    let shortestDistance = Infinity
     
-    set({
-      simulators: {
-        ...simulators,
-        [id]: {
-          ...simulator,
-          floorPeople: newFloorPeople
+    // Check all floors for people waiting
+    for (let i = 0; i < floorQueues.length; i++) {
+      if (floorQueues[i].length > 0) {
+        const distance = Math.abs(currentFloor - i)
+        if (distance < shortestDistance) {
+          shortestDistance = distance
+          nearestFloor = i
         }
       }
-    })
+    }
+    
+    return nearestFloor
   },
 
   checkAndStartAutomaticMovement: (id) => {
@@ -82,109 +121,77 @@ const useSimulatorStore = create((set, get) => ({
     
     if (!simulator || simulator.isAnimating) return
     
-    if (simulator.floorPeople[0] > 0) {
-      if (simulator.currentFloor !== 0) {
-        get().moveToGroundFloor(id)
-      } else {
-        get().moveElevator(id, simulator.floorCount)
+    // First priority: deliver people already in elevator to their destinations
+    if (simulator.elevatorQueue && simulator.elevatorQueue.length > 0) {
+      // Find the nearest destination floor from people in elevator
+      let nearestDestination = -1
+      let shortestDistance = Infinity
+      
+      simulator.elevatorQueue.forEach(person => {
+        const distance = Math.abs(simulator.currentFloor - person.destinationFloor)
+        if (distance < shortestDistance) {
+          shortestDistance = distance
+          nearestDestination = person.destinationFloor
+        }
+      })
+      
+      if (nearestDestination !== -1) {
+        get().moveElevatorToFloor(id, nearestDestination)
+        return
       }
+    }
+    
+    // Second priority: pick up people waiting on floors
+    const nearestFloor = get().findNearestFloorWithPeople(id)
+    
+    if (nearestFloor !== -1) {
+      get().moveElevatorToFloor(id, nearestFloor)
     }
   },
 
-  moveToGroundFloor: (id) => {
-    const { simulators } = get()
-    const simulator = simulators[id]
-    
-    if (!simulator || simulator.isAnimating || simulator.currentFloor === 0) return
-    
-    const { speed, floorPeople, elevatorPeople } = simulator
-    let newFloorPeople = [...floorPeople]
-    let newElevatorPeople = elevatorPeople
-    
-    if (simulator.currentFloor === simulator.floorCount - 1 && newElevatorPeople > 0) {
-      newFloorPeople[simulator.currentFloor] += newElevatorPeople
-      newElevatorPeople = 0
-    }
-    
-    set({
-      simulators: {
-        ...simulators,
-        [id]: {
-          ...simulator,
-          isAnimating: true,
-          currentFloor: 0,
-          direction: 'up',
-          floorPeople: newFloorPeople,
-          elevatorPeople: newElevatorPeople
-        }
-      }
-    })
-    
-    setTimeout(() => {
-      const { simulators: currentSimulators } = get()
-      if (currentSimulators[id]) {
-        const currentSim = currentSimulators[id]
-        let updatedFloorPeople = [...currentSim.floorPeople]
-        let updatedElevatorPeople = currentSim.elevatorPeople
-        
-        if (updatedFloorPeople[0] > 0) {
-          const peopleToMove = Math.min(updatedFloorPeople[0], 10 - updatedElevatorPeople)
-          updatedFloorPeople[0] -= peopleToMove
-          updatedElevatorPeople += peopleToMove
-        }
-        
-        set({
-          simulators: {
-            ...currentSimulators,
-            [id]: {
-              ...currentSim,
-              isAnimating: false,
-              floorPeople: updatedFloorPeople,
-              elevatorPeople: updatedElevatorPeople
-            }
-          }
-        })
-        
-        setTimeout(() => {
-          if (updatedElevatorPeople > 0) {
-            get().moveToTopFloor(id)
-          }
-        }, 400)
-      }
-    }, speed)
-  },
-
-  moveToTopFloor: (id) => {
+  moveElevatorToFloor: (id, targetFloor) => {
     const { simulators } = get()
     const simulator = simulators[id]
     
     if (!simulator || simulator.isAnimating) return
     
-    const { speed, floorCount, floorPeople, elevatorPeople } = simulator
-    let newFloorPeople = [...floorPeople]
-    let newElevatorPeople = elevatorPeople
+    const { speed, currentFloor, floorQueues, elevatorQueue } = simulator
+    const direction = targetFloor > currentFloor ? 'up' : 'down'
     
+    // Start animation
     set({
       simulators: {
         ...simulators,
         [id]: {
           ...simulator,
           isAnimating: true,
-          currentFloor: floorCount - 1,
-          direction: 'down',
-          floorPeople: newFloorPeople,
-          elevatorPeople: newElevatorPeople
+          currentFloor: targetFloor,
+          direction
         }
       }
     })
     
+    // After movement completes
     setTimeout(() => {
       const { simulators: currentSimulators } = get()
       if (currentSimulators[id]) {
         const currentSim = currentSimulators[id]
-        let updatedFloorPeople = [...currentSim.floorPeople]
+        let updatedFloorQueues = [...currentSim.floorQueues]
+        let updatedElevatorQueue = [...currentSim.elevatorQueue]
         
-        updatedFloorPeople[floorCount - 1] += currentSim.elevatorPeople
+        // Drop off people at their destination floor
+        updatedElevatorQueue = updatedElevatorQueue.filter(person => {
+          if (person.destinationFloor === targetFloor) {
+            return false // Remove from elevator (drop off)
+          }
+          return true
+        })
+        
+        // Pick up people from current floor (max 10 capacity)
+        const availableCapacity = 10 - updatedElevatorQueue.length
+        const peopleToPickup = updatedFloorQueues[targetFloor].slice(0, availableCapacity)
+        updatedFloorQueues[targetFloor] = updatedFloorQueues[targetFloor].slice(availableCapacity)
+        updatedElevatorQueue = [...updatedElevatorQueue, ...peopleToPickup]
         
         set({
           simulators: {
@@ -192,50 +199,20 @@ const useSimulatorStore = create((set, get) => ({
             [id]: {
               ...currentSim,
               isAnimating: false,
-              floorPeople: updatedFloorPeople,
-              elevatorPeople: 0
+              floorQueues: updatedFloorQueues,
+              elevatorQueue: updatedElevatorQueue
             }
           }
         })
         
+        // Continue checking for more people to serve
         setTimeout(() => {
           get().checkAndStartAutomaticMovement(id)
         }, 400)
       }
     }, speed)
   },
-  
-  moveElevator: (id, floorCount) => {
-    const { simulators } = get()
-    const simulator = simulators[id]
 
-    if (!simulator || simulator.isAnimating) return
-
-    const { floorPeople, elevatorPeople } = simulator
-    let newFloorPeople = [...floorPeople]
-    let newElevatorPeople = elevatorPeople
-
-    if (simulator.currentFloor === 0 && newFloorPeople[0] > 0) {
-      const peopleToMove = Math.min(newFloorPeople[0], 10 - newElevatorPeople)
-      newFloorPeople[0] -= peopleToMove
-      newElevatorPeople += peopleToMove
-
-      set({
-        simulators: {
-          ...simulators,
-          [id]: {
-            ...simulator,
-            floorPeople: newFloorPeople,
-            elevatorPeople: newElevatorPeople
-          }
-        }
-      })
-
-      setTimeout(() => {
-        get().moveToTopFloor(id)
-      }, 400)
-    }
-  }
 }))
 
 export default useSimulatorStore
