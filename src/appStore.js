@@ -24,11 +24,6 @@ const useAppStore = create((set, get) => ({
   
   startSimulations: () => {
     const { simulators } = get()
-    // First add some people using the new addPerson function
-    simulators.forEach(simulator => {
-      get().addPerson()
-    })
-    // Then start the automatic movement
     simulators.forEach(simulator => {
         useSimulatorStore.getState().checkAndStartAutomaticMovement(simulator.id)
     })
