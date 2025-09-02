@@ -122,22 +122,27 @@ const useSimulatorStore = create((set, get) => ({
     set({
       simulators: updatedSimulators
     })
+    
+    // Trigger elevator movement check for all simulators after adding person
+    Object.keys(updatedSimulators).forEach(id => {
+      get().checkAndStartAutomaticMovement(id)
+    })
   },
 
-  findNearestFloorWithPeople: (id) => {
+  findNearestFloorWithPeople: (id, elevator) => {
     const { simulators } = get()
     const simulator = simulators[id]
     
     if (!simulator) return -1
     
-    const { currentFloor, floorQueues } = simulator
+    const { floorQueues } = simulator
     let nearestFloor = -1
     let shortestDistance = Infinity
     
     // Check all floors for people waiting
     for (let i = 0; i < floorQueues.length; i++) {
       if (floorQueues[i].length > 0) {
-        const distance = Math.abs(currentFloor - i)
+        const distance = Math.abs(elevator.currentFloor - i)
         if (distance < shortestDistance) {
           shortestDistance = distance
           nearestFloor = i
@@ -215,7 +220,7 @@ const useSimulatorStore = create((set, get) => ({
       }
       
       // Second priority: pick up people waiting on floors
-      const nearestFloor = get().findNearestFloorWithPeople(id)
+      const nearestFloor = get().findNearestFloorWithPeople(id, elevator)
       
       if (nearestFloor !== -1) {
         get().moveElevatorToFloor(id, elevator.id, nearestFloor)

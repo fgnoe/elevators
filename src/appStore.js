@@ -13,21 +13,6 @@ const useAppStore = create((set, get) => ({
       useSimulatorStore.getState().resetSimulator(simulator.id, count)
     })
   },
-  
-  addSimulator: () => {
-    const { simulators } = get()
-    if (simulators.length >= 3) return
-    
-    const newId = Math.max(...simulators.map(s => s.id)) + 1
-    set({ simulators: [...simulators, { id: newId }] })
-  },
-  
-  startSimulations: () => {
-    const { simulators } = get()
-    simulators.forEach(simulator => {
-        useSimulatorStore.getState().checkAndStartAutomaticMovement(simulator.id)
-    })
-  },
 
   addPerson: () => {
     const { floorCount } = get()
