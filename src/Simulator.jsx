@@ -47,7 +47,7 @@ const renderExitCounters = (floors, floorCount, elevatorHeight, exitCounters) =>
 
 function Simulator({ simulatorId }) {
   const { floorCount } = useAppStore()
-  const { simulators, initializeSimulator, setSpeed } = useSimulatorStore()
+  const { simulators, initializeSimulator } = useSimulatorStore()
   
   useEffect(() => {
     initializeSimulator(simulatorId, floorCount)
@@ -67,16 +67,6 @@ function Simulator({ simulatorId }) {
   
   return (
     <div className="simulator-card">
-      <div className="speed-control">
-        <label>Speed: {speed}ms</label>
-        <input 
-          type="range" 
-          min="1" 
-          max="1000" 
-          value={1001 - speed} 
-          onChange={(e) => setSpeed(simulatorId, 1001 - parseInt(e.target.value))}
-        />
-      </div>
       <div className="building-container">
         {renderFloorLabels(floors, floorCount, elevatorHeight)}
         {renderExitCounters(floors, floorCount, elevatorHeight, exitCounters)}

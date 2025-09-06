@@ -5,7 +5,7 @@ import useAppStore from './appStore'
 
 
 function App() {
-  const { simulators, floorCount, setFloorCount, elevatorCount, setElevatorCount, startSimulation } = useAppStore()
+  const { simulators, floorCount, setFloorCount, elevatorCount, setElevatorCount, elevatorSpeed, setElevatorSpeed, startSimulation } = useAppStore()
 
   return (
     <div className="App">
@@ -29,6 +29,16 @@ function App() {
             max="3" 
             value={elevatorCount} 
             onChange={(e) => setElevatorCount(parseInt(e.target.value))}
+          />
+        </div>
+        <div>
+          <label>Speed: {elevatorSpeed}ms</label>
+          <input 
+            type="range" 
+            min="1"
+            max="1000"
+            value={1001 - elevatorSpeed} 
+            onChange={(e) => setElevatorSpeed(1001 - parseInt(e.target.value))}
           />
         </div>
         <button onClick={startSimulation}>Start Simulation</button>

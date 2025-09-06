@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import useAppStore from './appStore'
 
 // Constants
 const ELEVATOR_CAPACITY = 10
@@ -44,13 +45,14 @@ const useSimulatorStore = create((set, get) => ({
   initializeSimulator: (id, floorCount) => {
     const { simulators } = get()
     if (!simulators[id]) {
+      const globalSpeed = useAppStore.getState().elevatorSpeed
       set({
         simulators: {
           ...simulators,
           [id]: {
             id,
             floorCount,
-            speed: 1000,
+            speed: globalSpeed,
             floorQueues: Array(floorCount).fill(null).map(() => []), // Queue of people for each floor
             exitCounters: Array(floorCount).fill(0), // Counter of people who exited at each floor
             elevators: [{

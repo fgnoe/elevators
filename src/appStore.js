@@ -98,6 +98,7 @@ const useAppStore = create((set, get) => ({
   simulators: [{ id: 1 }, { id: 2 }, { id: 3 }],
   floorCount: 4,
   elevatorCount: 1,
+  elevatorSpeed: 1000,
   isSimulationRunning: false,
   bursts: generateRandomBursts(15, 4),
   schedule: generateScheduleFromBursts(generateRandomBursts(15, 4)),
@@ -126,6 +127,15 @@ const useAppStore = create((set, get) => ({
     
     simulators.forEach(simulator => {
       useSimulatorStore.getState().setElevatorCount(simulator.id, count)
+    })
+  },
+
+  setElevatorSpeed: (speed) => {
+    const { simulators } = get()
+    set({ elevatorSpeed: speed })
+    
+    simulators.forEach(simulator => {
+      useSimulatorStore.getState().setSpeed(simulator.id, speed)
     })
   },
 
