@@ -1,6 +1,7 @@
 import './App.css'
 import Simulator from './Simulator'
 import AddSimulatorCard from './AddSimulatorCard'
+import Timeline from './Timeline'
 import useAppStore from './appStore'
 
 
@@ -9,6 +10,7 @@ function App() {
 
   return (
     <div className="App">
+      <Timeline />
       <div className="controls">
         <div>
           <label>Floors: {floorCount}</label>

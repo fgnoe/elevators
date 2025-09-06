@@ -18,6 +18,7 @@ const schedule = [{
 const useAppStore = create((set, get) => ({
   simulators: [{ id: 1 }, { id: 2 }],
   floorCount: 4,
+  isSimulationRunning: false,
   
   setFloorCount: (count) => {
     const { simulators } = get()
@@ -44,12 +45,19 @@ const useAppStore = create((set, get) => ({
   },
 
   startSimulation: () => {
+    set({ isSimulationRunning: true })
+    
     schedule.forEach(({ time, originFloor, destinationFloor }) => {
       setTimeout(() => {
         // Convert 1-based floor numbers to 0-based for internal use
         get().addPerson(originFloor - 1, destinationFloor - 1)
       }, time)
     })
+    
+    // Reset simulation state after 30 seconds
+    setTimeout(() => {
+      set({ isSimulationRunning: false })
+    }, 30000)
   }
 }))
 
