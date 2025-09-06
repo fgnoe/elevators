@@ -3,8 +3,9 @@ import Simulator from './Simulator'
 import AddSimulatorCard from './AddSimulatorCard'
 import useAppStore from './appStore'
 
+
 function App() {
-  const { simulators, floorCount, setFloorCount, addPerson } = useAppStore()
+  const { simulators, floorCount, setFloorCount, startSimulation } = useAppStore()
 
   return (
     <div className="App">
@@ -19,7 +20,7 @@ function App() {
             onChange={(e) => setFloorCount(parseInt(e.target.value))}
           />
         </div>
-        <button onClick={addPerson}>Add Person</button>
+        <button onClick={startSimulation}>Start Simulation</button>
       </div>
       <div className="simulators-container">
         {simulators.map(simulator => (

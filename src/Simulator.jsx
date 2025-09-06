@@ -3,6 +3,48 @@ import useAppStore from './appStore'
 import './Simulator.css'
 import { useEffect } from 'react'
 
+// Constants
+const SIMULATOR_HEIGHT = 300
+const MAX_ELEVATORS = 3
+const ELEVATOR_SPACING = 35
+const ELEVATOR_LEFT_OFFSET = 70
+
+// Helper function to calculate floor position
+const getFloorPosition = (floor, floorCount, elevatorHeight) => {
+  return (floorCount - 1 - floor) * elevatorHeight
+}
+
+// Helper function to render floor labels
+const renderFloorLabels = (floors, floorCount, elevatorHeight) => {
+  return floors.map((floor) => (
+    <div 
+      key={floor}
+      className="floor-label"
+      style={{
+        top: `${getFloorPosition(floor, floorCount, elevatorHeight) + elevatorHeight / 2 - 10}px`
+      }}
+    >
+      Floor: {floor + 1}
+    </div>
+  ))
+}
+
+// Helper function to render exit counters
+const renderExitCounters = (floors, floorCount, elevatorHeight, exitCounters) => {
+  return floors.map((floor) => (
+    <div 
+      key={`exit-${floor}`}
+      className="floor-exit-counter"
+      style={{
+        top: `${getFloorPosition(floor, floorCount, elevatorHeight) + elevatorHeight / 2 - 10}px`,
+        marginRight: '30px'
+      }}
+    >
+      {exitCounters[floor] || 0}
+    </div>
+  ))
+}
+
 function Simulator({ simulatorId }) {
   const { floorCount } = useAppStore()
   const { simulators, initializeSimulator, setSpeed, addElevator } = useSimulatorStore()
@@ -19,8 +61,7 @@ function Simulator({ simulatorId }) {
   }
   const { speed, floorQueues, exitCounters, elevators } = simulator
   
-  const simulatorHeight = 300
-  const elevatorHeight = simulatorHeight / floorCount
+  const elevatorHeight = SIMULATOR_HEIGHT / floorCount
   
   const floors = Array.from({ length: floorCount }, (_, i) => i)
   
@@ -43,49 +84,28 @@ function Simulator({ simulatorId }) {
       <div className="elevator-controls">
         <button 
           onClick={handleAddElevator}
-          disabled={elevators.length >= 3}
+          disabled={elevators.length >= MAX_ELEVATORS}
           className="add-elevator-btn"
         >
-          + Add Elevator ({elevators.length}/3)
+          + Add Elevator ({elevators.length}/{MAX_ELEVATORS})
         </button>
       </div>
       <div className="building-container">
-        {floors.map((floor) => (
-          <div 
-            key={floor}
-            className="floor-label"
-            style={{
-              top: `${(floorCount - 1 - floor) * elevatorHeight + elevatorHeight / 2 - 10}px`
-            }}
-          >
-            Floor: {floor + 1}
-          </div>
-        ))}
-        {floors.map((floor) => (
-          <div 
-            key={`exit-${floor}`}
-            className="floor-exit-counter"
-            style={{
-              top: `${(floorCount - 1 - floor) * elevatorHeight + elevatorHeight / 2 - 10}px`,
-              marginRight: '30px'
-            }}
-          >
-            {exitCounters[floor] || 0}
-          </div>
-        ))}
+        {renderFloorLabels(floors, floorCount, elevatorHeight)}
+        {renderExitCounters(floors, floorCount, elevatorHeight, exitCounters)}
         <div className="building">
           {floors.map((floor) => (
             <div key={floor}>
               <div 
                 className="floor-line"
                 style={{
-                  top: `${(floorCount - 1 - floor) * elevatorHeight}px`
+                  top: `${getFloorPosition(floor, floorCount, elevatorHeight)}px`
                 }}
               />
               <div 
                 className="floor-people"
                 style={{
-                  top: `${(floorCount - 1 - floor) * elevatorHeight + elevatorHeight / 2 - 10}px`
+                  top: `${getFloorPosition(floor, floorCount, elevatorHeight) + elevatorHeight / 2 - 10}px`
                 }}
               >
                 {floorQueues[floor]?.length || 0}
@@ -93,8 +113,8 @@ function Simulator({ simulatorId }) {
             </div>
           ))}
           {elevators.map((elevator, index) => {
-            const topPosition = (floorCount - 1 - elevator.currentFloor) * elevatorHeight + 10
-            const leftPosition = 70 + (index * 35) // Space elevators horizontally
+            const topPosition = getFloorPosition(elevator.currentFloor, floorCount, elevatorHeight) + 10
+            const leftPosition = ELEVATOR_LEFT_OFFSET + (index * ELEVATOR_SPACING)
             
             return (
               <div 

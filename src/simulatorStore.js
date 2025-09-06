@@ -1,11 +1,42 @@
 import { create } from 'zustand'
 
+// Constants
+const ELEVATOR_CAPACITY = 10
+const MOVEMENT_DELAY_MS = 400
+
 // Person object structure
 const createPerson = (destinationFloor) => ({
   id: Math.random().toString(36).substr(2, 9),
   destinationFloor,
   timestamp: Date.now()
 })
+
+// Helper function to drop off passengers at their destination floor
+const dropOffPassengers = (elevatorQueue, targetFloor, exitCounters) => {
+  let exitCount = 0
+  const updatedQueue = elevatorQueue.filter(person => {
+    if (person.destinationFloor === targetFloor) {
+      exitCount++
+      return false // Remove from elevator (drop off)
+    }
+    return true
+  })
+  
+  const updatedExitCounters = [...exitCounters]
+  updatedExitCounters[targetFloor] += exitCount
+  
+  return { updatedQueue, updatedExitCounters }
+}
+
+// Helper function to pick up passengers from current floor
+const pickUpPassengers = (elevatorQueue, floorQueue, maxCapacity = ELEVATOR_CAPACITY) => {
+  const availableCapacity = maxCapacity - elevatorQueue.length
+  const peopleToPickup = floorQueue.slice(0, availableCapacity)
+  const updatedElevatorQueue = [...elevatorQueue, ...peopleToPickup]
+  const remainingPeople = floorQueue.slice(availableCapacity)
+  
+  return { updatedElevatorQueue, remainingPeople }
+}
 
 const useSimulatorStore = create((set, get) => ({
   simulators: {},
@@ -125,7 +156,7 @@ const useSimulatorStore = create((set, get) => ({
     
     // Trigger elevator movement check for all simulators after adding person
     Object.keys(updatedSimulators).forEach(id => {
-      get().checkAndStartAutomaticMovement(id)
+      get().processElevatorMovement(id)
     })
   },
 
@@ -153,7 +184,7 @@ const useSimulatorStore = create((set, get) => ({
     return nearestFloor
   },
 
-  checkAndStartAutomaticMovement: (id) => {
+  processElevatorMovement: (id) => {
     const { simulators } = get()
     const simulator = simulators[id]
     
@@ -165,12 +196,12 @@ const useSimulatorStore = create((set, get) => ({
       
       // Check if elevator is not full and there are people waiting on current floor
       const currentFloorQueue = simulator.floorQueues[elevator.currentFloor]
-      const hasCapacity = elevator.elevatorQueue.length < 10
+      const hasCapacity = elevator.elevatorQueue.length < ELEVATOR_CAPACITY
       const hasPeopleOnCurrentFloor = currentFloorQueue && currentFloorQueue.length > 0
       
       if (hasCapacity && hasPeopleOnCurrentFloor) {
         // Pick up people from current floor before moving
-        const availableCapacity = 10 - elevator.elevatorQueue.length
+        const availableCapacity = ELEVATOR_CAPACITY - elevator.elevatorQueue.length
         const peopleToPickup = currentFloorQueue.slice(0, availableCapacity)
         
         // Update elevator queue and floor queue
@@ -267,30 +298,15 @@ const useSimulatorStore = create((set, get) => ({
         let updatedElevatorQueue = [...currentElevator.elevatorQueue]
         let updatedExitCounters = [...currentSim.exitCounters]
         
-        // Drop off people at their destination floor and count exits
-        let exitCount = 0
-        updatedElevatorQueue = updatedElevatorQueue.filter(person => {
-          if (person.destinationFloor === targetFloor) {
-            exitCount++
-            return false // Remove from elevator (drop off)
-          }
-          return true
-        })
+        // Drop off passengers at their destination floor
+        const dropOffResult = dropOffPassengers(updatedElevatorQueue, targetFloor, updatedExitCounters)
+        updatedElevatorQueue = dropOffResult.updatedQueue
+        updatedExitCounters = dropOffResult.updatedExitCounters
         
-        // Update exit counter for this floor
-        updatedExitCounters[targetFloor] += exitCount
-        
-        // Pick up people from current floor with preference system
-        const availableCapacity = 10 - updatedElevatorQueue.length
-        let remainingPeople = [...updatedFloorQueues[targetFloor]]
-        
-        // First, try to fill this elevator
-        const peopleToPickup = remainingPeople.slice(0, availableCapacity)
-        updatedElevatorQueue = [...updatedElevatorQueue, ...peopleToPickup]
-        remainingPeople = remainingPeople.slice(availableCapacity)
-        
-        // Update floor queue with remaining people
-        updatedFloorQueues[targetFloor] = remainingPeople
+        // Pick up passengers from current floor
+        const pickUpResult = pickUpPassengers(updatedElevatorQueue, updatedFloorQueues[targetFloor])
+        updatedElevatorQueue = pickUpResult.updatedElevatorQueue
+        updatedFloorQueues[targetFloor] = pickUpResult.remainingPeople
         
         // Update this elevator's state
         const updatedElevators = currentSim.elevators.map((elev, idx) => 
@@ -313,8 +329,8 @@ const useSimulatorStore = create((set, get) => ({
         
         // Continue checking for more people to serve
         setTimeout(() => {
-          get().checkAndStartAutomaticMovement(id)
-        }, 400)
+          get().processElevatorMovement(id)
+        }, MOVEMENT_DELAY_MS)
       }
     }, speed)
   },
