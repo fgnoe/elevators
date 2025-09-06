@@ -1,29 +1,42 @@
 import { create } from 'zustand'
 import useSimulatorStore from './simulatorStore'
 
-// Initial burst configuration
-const initialBursts = [{
-    id: 'burst-1',
-    time: 0,
-    amount: 40,
-    originFloor: 1,
-    destinationFloor: 2,
-    timeRange: 7000
-}, {
-    id: 'burst-2', 
-    time: 5000,
-    amount: 35,
-    originFloor: 2,
-    destinationFloor: 1,
-    timeRange: 20000
-}, {
-    id: 'burst-3',
-    time: 20000,
-    amount: 20,
-    originFloor: 3,
-    destinationFloor: 1,
-    timeRange: 10000
-}]
+// Function to generate random bursts
+const generateRandomBursts = (count = 15, floorCount = 4) => {
+  const bursts = []
+  
+  for (let i = 0; i < count; i++) {
+    // Random time between 0 and 30 seconds
+    const time = Math.floor(Math.random() * 30000)
+    
+    // Random amount between 4 and 30 people
+    const amount = Math.floor(Math.random() * 26) + 4
+    
+    // Random origin floor (1 to floorCount)
+    const originFloor = Math.floor(Math.random() * floorCount) + 1
+    
+    // Random destination floor (different from origin)
+    let destinationFloor
+    do {
+      destinationFloor = Math.floor(Math.random() * floorCount) + 1
+    } while (destinationFloor === originFloor)
+    
+    // Random time range between 500ms and 8000ms
+    const timeRange = Math.floor(Math.random() * 7500) + 500
+    
+    bursts.push({
+      id: `burst-${Date.now()}-${i}`,
+      time,
+      amount,
+      originFloor,
+      destinationFloor,
+      timeRange
+    })
+  }
+  
+  // Sort by time for better visualization
+  return bursts.sort((a, b) => a.time - b.time)
+}
 
 // Normal distribution function
 const generateNormalDistribution = (centerTime, timeRange, amount) => {
@@ -86,12 +99,21 @@ const useAppStore = create((set, get) => ({
   floorCount: 4,
   elevatorCount: 1,
   isSimulationRunning: false,
-  bursts: initialBursts,
-  schedule: generateScheduleFromBursts(initialBursts),
+  bursts: generateRandomBursts(15, 4),
+  schedule: generateScheduleFromBursts(generateRandomBursts(15, 4)),
   
   setFloorCount: (count) => {
     const { simulators } = get()
-    set({ floorCount: count })
+    
+    // Generate new bursts with the new floor count
+    const newBursts = generateRandomBursts(15, count)
+    const newSchedule = generateScheduleFromBursts(newBursts)
+    
+    set({ 
+      floorCount: count, 
+      bursts: newBursts, 
+      schedule: newSchedule 
+    })
     
     simulators.forEach(simulator => {
       useSimulatorStore.getState().resetSimulator(simulator.id, count)
@@ -131,6 +153,13 @@ const useAppStore = create((set, get) => ({
   removeBurst: (burstId) => {
     const { bursts } = get()
     const newBursts = bursts.filter(burst => burst.id !== burstId)
+    const newSchedule = generateScheduleFromBursts(newBursts)
+    set({ bursts: newBursts, schedule: newSchedule })
+  },
+
+  randomizeBursts: () => {
+    const { floorCount } = get()
+    const newBursts = generateRandomBursts(15, floorCount)
     const newSchedule = generateScheduleFromBursts(newBursts)
     set({ bursts: newBursts, schedule: newSchedule })
   },

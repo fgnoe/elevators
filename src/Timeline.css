@@ -6,10 +6,38 @@
   border: 1px solid #e9ecef;
 }
 
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
 .timeline-title {
   font-size: 16px;
   font-weight: 500;
   color: #6c757d;
+  margin: 0;
+}
+
+.randomize-button {
+  padding: 8px 16px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.randomize-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.randomize-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
 }
 
 .timeline-labels {

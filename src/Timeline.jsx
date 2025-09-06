@@ -5,7 +5,7 @@ import { useState } from 'react'
 const TOTAL_SIMULATION_TIME = 30000 // 30 seconds in milliseconds
 
 function Timeline() {
-  const { isSimulationRunning, bursts, addBurst, updateBurst } = useAppStore()
+  const { isSimulationRunning, bursts, addBurst, updateBurst, randomizeBursts } = useAppStore()
   const [showModal, setShowModal] = useState(false)
   const [editingBurst, setEditingBurst] = useState(null)
   const [modalData, setModalData] = useState({
@@ -59,7 +59,16 @@ function Timeline() {
   
   return (
     <div className="timeline-container">
-      <h3 className="timeline-title">Simulation Schedule</h3>
+      <div className="timeline-header">
+        <h3 className="timeline-title">Simulation Schedule</h3>
+        <button 
+          className="randomize-button" 
+          onClick={randomizeBursts}
+          disabled={isSimulationRunning}
+        >
+          Randomize Bursts
+        </button>
+      </div>
       <div className="timeline-labels">
         <span className="timeline-label-left">0s</span>
         <span className="timeline-label-right">30s</span>
