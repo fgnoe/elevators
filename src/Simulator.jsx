@@ -47,7 +47,7 @@ const renderExitCounters = (floors, floorCount, elevatorHeight, exitCounters) =>
 
 function Simulator({ simulatorId }) {
   const { floorCount } = useAppStore()
-  const { simulators, initializeSimulator, setSpeed, addElevator } = useSimulatorStore()
+  const { simulators, initializeSimulator, setSpeed } = useSimulatorStore()
   
   useEffect(() => {
     initializeSimulator(simulatorId, floorCount)
@@ -65,10 +65,6 @@ function Simulator({ simulatorId }) {
   
   const floors = Array.from({ length: floorCount }, (_, i) => i)
   
-  const handleAddElevator = () => {
-    addElevator(simulatorId)
-  }
-  
   return (
     <div className="simulator-card">
       <div className="speed-control">
@@ -80,15 +76,6 @@ function Simulator({ simulatorId }) {
           value={1001 - speed} 
           onChange={(e) => setSpeed(simulatorId, 1001 - parseInt(e.target.value))}
         />
-      </div>
-      <div className="elevator-controls">
-        <button 
-          onClick={handleAddElevator}
-          disabled={elevators.length >= MAX_ELEVATORS}
-          className="add-elevator-btn"
-        >
-          + Add Elevator ({elevators.length}/{MAX_ELEVATORS})
-        </button>
       </div>
       <div className="building-container">
         {renderFloorLabels(floors, floorCount, elevatorHeight)}
@@ -113,7 +100,7 @@ function Simulator({ simulatorId }) {
             </div>
           ))}
           {elevators.map((elevator, index) => {
-            const topPosition = getFloorPosition(elevator.currentFloor, floorCount, elevatorHeight) + 10
+            const topPosition = getFloorPosition(elevator.currentFloor, floorCount, elevatorHeight) + (floorCount  < 15 ? 10 : 5)
             const leftPosition = ELEVATOR_LEFT_OFFSET + (index * ELEVATOR_SPACING)
             
             return (
@@ -121,7 +108,7 @@ function Simulator({ simulatorId }) {
                 key={elevator.id}
                 className={`simulator-box ${elevator.isAnimating ? 'animating' : ''}`}
                 style={{
-                  height: `${elevatorHeight - 20}px`,
+                  height: `${Math.max(elevatorHeight - 20, 10)}px`,
                   top: `${topPosition}px`,
                   left: `${leftPosition}px`,
                   transition: `top ${speed}ms ease-in-out`,

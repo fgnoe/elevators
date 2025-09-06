@@ -127,6 +127,41 @@ const useSimulatorStore = create((set, get) => ({
     }
   },
 
+  setElevatorCount: (id, count) => {
+    const { simulators } = get()
+    const simulator = simulators[id]
+    if (!simulator) return
+
+    const currentCount = simulator.elevators.length
+    let newElevators = [...simulator.elevators]
+
+    if (count > currentCount) {
+      // Add elevators
+      for (let i = currentCount; i < count; i++) {
+        newElevators.push({
+          id: i,
+          currentFloor: 0,
+          isAnimating: false,
+          direction: 'up',
+          elevatorQueue: []
+        })
+      }
+    } else if (count < currentCount) {
+      // Remove elevators from the end
+      newElevators = newElevators.slice(0, count)
+    }
+
+    set({
+      simulators: {
+        ...simulators,
+        [id]: {
+          ...simulator,
+          elevators: newElevators
+        }
+      }
+    })
+  },
+
   addPerson: (origin, destination) => {
     const { simulators } = get()
     

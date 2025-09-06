@@ -16,8 +16,9 @@ const schedule = [{
 }]
 
 const useAppStore = create((set, get) => ({
-  simulators: [{ id: 1 }, { id: 2 }],
+  simulators: [{ id: 1 }, { id: 2 }, { id: 3 }],
   floorCount: 4,
+  elevatorCount: 1,
   isSimulationRunning: false,
   
   setFloorCount: (count) => {
@@ -29,14 +30,13 @@ const useAppStore = create((set, get) => ({
     })
   },
 
-  addSimulator: () => {
-    const { simulators, floorCount } = get()
-    if (simulators.length < 3) {
-      const newId = Math.max(...simulators.map(s => s.id)) + 1
-      const updatedSimulators = [...simulators, { id: newId }]
-      set({ simulators: updatedSimulators })
-      useSimulatorStore.getState().initializeSimulator(newId, floorCount)
-    }
+  setElevatorCount: (count) => {
+    const { simulators } = get()
+    set({ elevatorCount: count })
+    
+    simulators.forEach(simulator => {
+      useSimulatorStore.getState().setElevatorCount(simulator.id, count)
+    })
   },
 
   addPerson: (originFloor, destinationFloor) => {
