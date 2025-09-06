@@ -139,16 +139,8 @@ function Timeline() {
                 onChange={(e) => setModalData({...modalData, timeRange: parseInt(e.target.value)})}
               />
             </div>
-            <div className="modal-field">
-              <label>Time ({modalData.time / 1000}s):</label>
-              <input
-                type="number"
-                min="0"
-                max="30000"
-                step="100"
-                value={modalData.time}
-                onChange={(e) => setModalData({...modalData, time: parseInt(e.target.value)})}
-              />
+            <div className="modal-field time-time">
+              <label id="time-time">Time ({modalData.time / 1000}s):</label>
             </div>
             <div className="modal-buttons">
               <button onClick={handleModalSubmit}>
