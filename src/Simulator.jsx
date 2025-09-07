@@ -93,6 +93,9 @@ function Simulator({ simulatorId }) {
             const topPosition = getFloorPosition(elevator.currentFloor, floorCount, elevatorHeight) + (floorCount  < 15 ? 10 : 5)
             const leftPosition = ELEVATOR_LEFT_OFFSET + (index * ELEVATOR_SPACING)
             
+            // Always use animationDuration if available, otherwise don't set transition (no animation)
+            const transitionStyle = elevator.animationDuration ? `top ${elevator.animationDuration}ms linear` : 'none'
+            
             return (
               <div 
                 key={elevator.id}
@@ -101,7 +104,7 @@ function Simulator({ simulatorId }) {
                   height: `${Math.max(elevatorHeight - 20, 10)}px`,
                   top: `${topPosition}px`,
                   left: `${leftPosition}px`,
-                  transition: `top ${elevator.animationDuration || speed}ms linear`,
+                  transition: transitionStyle,
                   transform: 'none' // Override the center transform
                 }}
               >

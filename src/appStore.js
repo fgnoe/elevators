@@ -2,11 +2,11 @@ import { create } from 'zustand'
 import useSimulatorStore from './simulatorStore'
 
 
-const DEFAULT_BURSTS_COUNT = 15
+const DEFAULT_BURSTS_COUNT = 35
 const DEFAULT_FLOOR_COUNT = 8
 const DEFAULT_ELEVATOR_COUNT = 3
-const DEFAULT_ELEVATOR_SPEED = 500
-const DEFAULT_WAIT_TIME = 600
+const DEFAULT_ELEVATOR_SPEED = 400
+const DEFAULT_WAIT_TIME = 100
 
 // Function to generate random bursts
 const generateRandomBursts = (count = 15, floorCount = 8) => {
@@ -105,7 +105,7 @@ const initialRandomBursts = generateRandomBursts(DEFAULT_BURSTS_COUNT, DEFAULT_F
 const initialSchedule = generateScheduleFromBursts(initialRandomBursts)
 
 const useAppStore = create((set, get) => ({
-  simulators: [{ id: 1 }, { id: 2 }],
+  simulators: [{ id: 1, type: "basic" }, { id: 2, type: "advanced" }],
   floorCount: DEFAULT_FLOOR_COUNT,
   elevatorCount: DEFAULT_ELEVATOR_COUNT,
   elevatorSpeed: DEFAULT_ELEVATOR_SPEED,
