@@ -101,7 +101,7 @@ function Simulator({ simulatorId }) {
                   height: `${Math.max(elevatorHeight - 20, 10)}px`,
                   top: `${topPosition}px`,
                   left: `${leftPosition}px`,
-                  transition: `top ${speed}ms ease-in-out`,
+                  transition: `top ${elevator.animationDuration || speed}ms linear`,
                   transform: 'none' // Override the center transform
                 }}
               >

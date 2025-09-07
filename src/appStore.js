@@ -1,8 +1,15 @@
 import { create } from 'zustand'
 import useSimulatorStore from './simulatorStore'
 
+
+const DEFAULT_BURSTS_COUNT = 15
+const DEFAULT_FLOOR_COUNT = 8
+const DEFAULT_ELEVATOR_COUNT = 3
+const DEFAULT_ELEVATOR_SPEED = 500
+const DEFAULT_WAIT_TIME = 600
+
 // Function to generate random bursts
-const generateRandomBursts = (count = 15, floorCount = 4) => {
+const generateRandomBursts = (count = 15, floorCount = 8) => {
   const bursts = []
   
   for (let i = 0; i < count; i++) {
@@ -94,14 +101,18 @@ const generateScheduleFromBursts = (bursts) => {
   return schedule.sort((a, b) => a.time - b.time)
 }
 
+const initialRandomBursts = generateRandomBursts(DEFAULT_BURSTS_COUNT, DEFAULT_FLOOR_COUNT)
+const initialSchedule = generateScheduleFromBursts(initialRandomBursts)
+
 const useAppStore = create((set, get) => ({
-  simulators: [{ id: 1 }, { id: 2 }, { id: 3 }],
-  floorCount: 4,
-  elevatorCount: 1,
-  elevatorSpeed: 1000,
+  simulators: [{ id: 1 }, { id: 2 }],
+  floorCount: DEFAULT_FLOOR_COUNT,
+  elevatorCount: DEFAULT_ELEVATOR_COUNT,
+  elevatorSpeed: DEFAULT_ELEVATOR_SPEED,
+  waitTime: DEFAULT_WAIT_TIME,
   isSimulationRunning: false,
-  bursts: generateRandomBursts(15, 4),
-  schedule: generateScheduleFromBursts(generateRandomBursts(15, 4)),
+  bursts: initialRandomBursts,
+  schedule: initialSchedule,
   
   setFloorCount: (count) => {
     const { simulators } = get()
@@ -136,6 +147,15 @@ const useAppStore = create((set, get) => ({
     
     simulators.forEach(simulator => {
       useSimulatorStore.getState().setSpeed(simulator.id, speed)
+    })
+  },
+
+  setWaitTime: (waitTime) => {
+    const { simulators } = get()
+    set({ waitTime })
+    
+    simulators.forEach(simulator => {
+      useSimulatorStore.getState().setWaitTime(simulator.id, waitTime)
     })
   },
 

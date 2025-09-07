@@ -46,6 +46,7 @@ const useSimulatorStore = create((set, get) => ({
     const { simulators } = get()
     if (!simulators[id]) {
       const globalSpeed = useAppStore.getState().elevatorSpeed
+      const globalWaitTime = useAppStore.getState().waitTime
       set({
         simulators: {
           ...simulators,
@@ -53,6 +54,7 @@ const useSimulatorStore = create((set, get) => ({
             id,
             floorCount,
             speed: globalSpeed,
+            waitTime: globalWaitTime,
             floorQueues: Array(floorCount).fill(null).map(() => []), // Queue of people for each floor
             exitCounters: Array(floorCount).fill(0), // Counter of people who exited at each floor
             elevators: [{
@@ -75,6 +77,18 @@ const useSimulatorStore = create((set, get) => ({
         simulators: {
           ...simulators,
           [id]: { ...simulators[id], speed }
+        }
+      })
+    }
+  },
+
+  setWaitTime: (id, waitTime) => {
+    const { simulators } = get()
+    if (simulators[id]) {
+      set({
+        simulators: {
+          ...simulators,
+          [id]: { ...simulators[id], waitTime }
         }
       })
     }
@@ -305,13 +319,20 @@ const useSimulatorStore = create((set, get) => ({
     const elevator = simulator.elevators[elevatorId]
     if (!elevator || elevator.isAnimating) return
     
-    const { speed, floorQueues } = simulator
+    const { speed, floorQueues, waitTime } = simulator
     const direction = targetFloor > elevator.currentFloor ? 'up' : 'down'
+    
+    // Calculate movement time based on distance (number of floors)
+    const floorsToMove = Math.abs(targetFloor - elevator.currentFloor)
+    const movementTime = speed * floorsToMove
+    
+    // Capture waitTime at the start to avoid timing inconsistencies
+    const capturedWaitTime = waitTime
     
     // Start animation
     const updatedElevators = simulator.elevators.map((elev, idx) => 
       idx === elevatorId 
-        ? { ...elev, isAnimating: true, currentFloor: targetFloor, direction }
+        ? { ...elev, isAnimating: true, currentFloor: targetFloor, direction, animationDuration: movementTime }
         : elev
     )
     
@@ -367,9 +388,9 @@ const useSimulatorStore = create((set, get) => ({
         // Continue checking for more people to serve
         setTimeout(() => {
           get().processElevatorMovement(id)
-        }, MOVEMENT_DELAY_MS)
+        }, capturedWaitTime)
       }
-    }, speed)
+    }, movementTime)
   },
 
 }))

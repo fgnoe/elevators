@@ -2,11 +2,15 @@ import './App.css'
 import Simulator from './Simulator'
 import Timeline from './Timeline'
 import useAppStore from './appStore'
+import {useEffect} from "react";
 
 
 function App() {
   const { simulators, floorCount, setFloorCount, elevatorCount, setElevatorCount, elevatorSpeed, setElevatorSpeed, startSimulation } = useAppStore()
 
+    useEffect(() => {
+        setElevatorCount(3)
+    }, []);
   return (
     <div className="App">
       <Timeline />
