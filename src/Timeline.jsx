@@ -60,13 +60,13 @@ function Timeline() {
   return (
     <div className="timeline-container">
       <div className="timeline-header">
-        <h3 className="timeline-title">Simulation Schedule</h3>
+        <h3 className="timeline-title">Itinerario de simulacion</h3>
         <button 
           className="randomize-button" 
           onClick={randomizeBursts}
           disabled={isSimulationRunning}
         >
-          Randomize Bursts
+          Reorganizar llegadas
         </button>
       </div>
       <div className="timeline-labels">
@@ -98,9 +98,9 @@ function Timeline() {
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{editingBurst ? 'Edit Burst' : 'Create Burst'}</h3>
+            <h3>{editingBurst ? 'Editar llegada' : 'Crear llegada'}</h3>
             <div className="modal-field">
-              <label>Amount of people:</label>
+              <label>Cantidad de personas:</label>
               <input
                 type="number"
                 min="1"
@@ -110,7 +110,7 @@ function Timeline() {
               />
             </div>
             <div className="modal-field">
-              <label>Origin floor:</label>
+              <label>Piso de origen:</label>
               <input
                 type="number"
                 min="1"
@@ -120,7 +120,7 @@ function Timeline() {
               />
             </div>
             <div className="modal-field">
-              <label>Destination floor:</label>
+              <label>Piso de destino:</label>
               <input
                 type="number"
                 min="1"
@@ -130,7 +130,7 @@ function Timeline() {
               />
             </div>
             <div className="modal-field">
-              <label>Time range (0ms to 10000ms):</label>
+              <label>Rango de tiempo (0ms a 10000ms):</label>
               <input
                 type="number"
                 min="0"
@@ -140,13 +140,13 @@ function Timeline() {
               />
             </div>
             <div className="modal-field time-time">
-              <label id="time-time">Time ({modalData.time / 1000}s):</label>
+              <label id="time-time">Tiempo ({modalData.time / 1000}s):</label>
             </div>
             <div className="modal-buttons">
               <button onClick={handleModalSubmit}>
-                {editingBurst ? 'Update' : 'Create'}
+                {editingBurst ? 'Actualizar' : 'Crear'}
               </button>
-              <button onClick={() => setShowModal(false)}>Cancel</button>
+              <button onClick={() => setShowModal(false)}>Cancelar</button>
             </div>
           </div>
         </div>

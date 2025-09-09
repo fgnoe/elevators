@@ -5,7 +5,6 @@ import { useEffect } from 'react'
 
 // Constants
 const SIMULATOR_HEIGHT = 300
-const MAX_ELEVATORS = 3
 const ELEVATOR_SPACING = 35
 const ELEVATOR_LEFT_OFFSET = 70
 
@@ -24,7 +23,7 @@ const renderFloorLabels = (floors, floorCount, elevatorHeight) => {
         top: `${getFloorPosition(floor, floorCount, elevatorHeight) + elevatorHeight / 2 - 10}px`
       }}
     >
-      Floor: {floor + 1}
+      Piso: {floor + 1}
     </div>
   ))
 }
@@ -59,14 +58,23 @@ function Simulator({ simulatorId }) {
     exitCounters: Array(floorCount).fill(0),
     elevators: [{ id: 0, currentFloor: 0, isAnimating: false, direction: 'up', elevatorQueue: [] }] 
   }
-  const { speed, floorQueues, exitCounters, elevators } = simulator
+  const { speed, floorQueues, exitCounters, elevators, type } = simulator
   
   const elevatorHeight = SIMULATOR_HEIGHT / floorCount
   
   const floors = Array.from({ length: floorCount }, (_, i) => i)
   
+  // Get the display title based on simulator type
+  const getSimulatorTitle = (type) => {
+    if (type === 'advanced') return 'Inteligente'
+    return 'Basico'
+  }
+  
   return (
     <div className="simulator-card">
+      <div className="simulator-title">
+        {getSimulatorTitle(type)}
+      </div>
       <div className="building-container">
         {renderFloorLabels(floors, floorCount, elevatorHeight)}
         {renderExitCounters(floors, floorCount, elevatorHeight, exitCounters)}
@@ -90,22 +98,40 @@ function Simulator({ simulatorId }) {
             </div>
           ))}
           {elevators.map((elevator, index) => {
-            const topPosition = getFloorPosition(elevator.currentFloor, floorCount, elevatorHeight) + (floorCount  < 15 ? 10 : 5)
+            // FIX TELEPORTATION: Use correct floor for positioning
+            // During animation: start from startFloor, animate to targetFloor
+            // When not animating: use currentFloor
+            const displayFloor = elevator.isAnimating && elevator.startFloor !== undefined
+              ? elevator.startFloor
+              : elevator.currentFloor
+
+            const topPosition = getFloorPosition(displayFloor, floorCount, elevatorHeight) + (floorCount  < 15 ? 10 : 5)
             const leftPosition = ELEVATOR_LEFT_OFFSET + (index * ELEVATOR_SPACING)
-            
-            // Always use animationDuration if available, otherwise don't set transition (no animation)
-            const transitionStyle = elevator.animationDuration ? `top ${elevator.animationDuration}ms linear` : 'none'
-            
+
+            // Calculate target position for animation
+            let animationStyle = {}
+            if (elevator.isAnimating && elevator.targetFloor !== undefined && elevator.animationDuration) {
+              const targetTopPosition = getFloorPosition(elevator.targetFloor, floorCount, elevatorHeight) + (floorCount < 15 ? 10 : 5)
+              animationStyle = {
+                transition: `top ${elevator.animationDuration}ms linear`,
+                top: `${targetTopPosition}px` // Animate TO the target position
+              }
+            } else {
+              animationStyle = {
+                transition: 'none',
+                top: `${topPosition}px` // Static position
+              }
+            }
+
             return (
-              <div 
+              <div
                 key={elevator.id}
                 className={`simulator-box ${elevator.isAnimating ? 'animating' : ''}`}
                 style={{
                   height: `${Math.max(elevatorHeight - 20, 10)}px`,
-                  top: `${topPosition}px`,
                   left: `${leftPosition}px`,
-                  transition: transitionStyle,
-                  transform: 'none' // Override the center transform
+                  transform: 'none', // Override the center transform
+                  ...animationStyle
                 }}
               >
                 <div className="elevator-people">

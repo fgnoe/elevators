@@ -1,4 +1,4 @@
-# Elevators
+# Elevadores
 
 [![Deploy to GitHub Pages](https://github.com/fgnoe/elevators/actions/workflows/deploy.yml/badge.svg)](https://github.com/fgnoe/elevators/actions/workflows/deploy.yml)
 
@@ -8,49 +8,27 @@ Simulador de elevadores
 
 ## Getting Started
 
-### Prerequisites
+### Prerrequisitos
 
-- Node.js 24.6.0 or higher (you have this installed)
-- npm (comes with Node.js)
+- Node.js 24.6.0 o mayor
 
-### Installation
+### Instalacion
 
-Install dependencies:
+Instalar Dependencias:
 ```bash
 npm install
 ```
 
-### Development
+### Desarrollo
 
-Start the development server:
+Iniciar la aplicacion en modo dev:
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+La app va a estar disponible en `http://localhost:5173`
 
-### Preview Production Build
-
-Preview the production build locally:
-```bash
-npm run preview
-```
-
-## GitHub Pages Deployment
-
-### Method 1: Manual Deployment
-
-1. Build the project:
-   ```bash
-   npm run build
-   ```
-
-2. Push the `dist` folder contents to your GitHub repository's `gh-pages` branch
-
-3. Enable GitHub Pages in your repository settings, selecting the `gh-pages` branch
-
-
-## Technologies Used
+## Tecnologias utilizadas
 
 - React 18.3.1
 - Vite 5.4.1

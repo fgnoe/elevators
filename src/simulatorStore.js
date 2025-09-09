@@ -247,21 +247,14 @@ const useSimulatorStore = create((set, get) => ({
     if (!simulator) return -1
     
     const { floorQueues } = simulator
-    let nearestFloor = -1
-    let shortestDistance = Infinity
-    
-    // Check all floors for people waiting
+
     for (let i = 0; i < floorQueues.length; i++) {
       if (floorQueues[i].length > 0) {
-        const distance = Math.abs(elevator.currentFloor - i)
-        if (distance < shortestDistance) {
-          shortestDistance = distance
-          nearestFloor = i
-        }
+        return i // Return first (lowest) floor found with people - ignores distance!
       }
     }
     
-    return nearestFloor
+    return -1
   },
 
   processElevatorMovement: (id) => {
@@ -283,7 +276,26 @@ const useSimulatorStore = create((set, get) => ({
     const simulator = simulators[id]
     
     if (!simulator) return
-    
+
+    // FIX STUCK PASSENGERS: Add periodic safety processing for all elevators
+    // This ensures elevators don't get permanently stuck due to race conditions
+    const hasStuckElevators = simulator.elevators.some(elev =>
+      !elev.isAnimating && elev.elevatorQueue.length > 0
+    )
+    const hasWaitingPeople = simulator.floorQueues.some(queue => queue.length > 0)
+
+    if (hasStuckElevators || hasWaitingPeople) {
+      // Force at least one elevator to process if there are people waiting
+      const availableElevators = simulator.elevators.filter(elev => !elev.isAnimating)
+      if (availableElevators.length === 0) {
+        // All elevators are busy, schedule a retry
+        setTimeout(() => {
+          get().processElevatorMovement(id)
+        }, 500)
+        return
+      }
+    }
+
     // Check each elevator for movement opportunities
     simulator.elevators.forEach(elevator => {
       if (elevator.isAnimating) return
@@ -360,203 +372,158 @@ const useSimulatorStore = create((set, get) => ({
     const simulator = simulators[id]
     
     if (!simulator) return
+
+    // Strategy: Aggressive pickup, smart routing, predictive positioning
     
-    // Advanced elevator logic - direction-aware and inter-elevator coordinated
     simulator.elevators.forEach(elevator => {
       if (elevator.isAnimating) return
       
-      // Helper function to determine elevator's current direction based on passengers
-      const getElevatorDirection = (elevatorQueue, currentFloor) => {
-        if (!elevatorQueue || elevatorQueue.length === 0) return null
-        
-        const upCount = elevatorQueue.filter(person => person.destinationFloor > currentFloor).length
-        const downCount = elevatorQueue.filter(person => person.destinationFloor < currentFloor).length
-        
-        if (upCount > downCount) return 'up'
-        if (downCount > upCount) return 'down'
-        return null // mixed or equal
-      }
-      
-      // Helper function to filter people by direction compatibility
-      const getCompatiblePeople = (floorQueue, elevatorDirection, currentFloor) => {
-        if (!floorQueue || floorQueue.length === 0) return []
-        if (!elevatorDirection) return floorQueue // If no direction preference, pick up all
-        
-        return floorQueue.filter(person => {
-          const personDirection = person.destinationFloor > currentFloor ? 'up' : 'down'
-          return personDirection === elevatorDirection
-        })
-      }
-      
-      // Check if elevator is not full and there are people waiting on current floor
+      // Always pick up people from current floor first (maximize throughput)
       const currentFloorQueue = simulator.floorQueues[elevator.currentFloor]
       const hasCapacity = elevator.elevatorQueue.length < ELEVATOR_CAPACITY
-      const elevatorDirection = getElevatorDirection(elevator.elevatorQueue, elevator.currentFloor)
       
       if (hasCapacity && currentFloorQueue && currentFloorQueue.length > 0) {
-        // Advanced pickup: only pick up people going in the same direction
-        const compatiblePeople = getCompatiblePeople(currentFloorQueue, elevatorDirection, elevator.currentFloor)
+        const pickupResult = pickUpPassengers(elevator.elevatorQueue, currentFloorQueue)
+        const updatedElevatorQueue = pickupResult.updatedElevatorQueue
+        const updatedFloorQueue = pickupResult.remainingPeople
+        const newWaitingTimes = pickupResult.waitingTimes || []
         
-        if (compatiblePeople.length > 0) {
-          // Use pickup helper with compatible people to get timing data
-          const pickupResult = pickUpPassengers(elevator.elevatorQueue, compatiblePeople)
-          const updatedElevatorQueue = pickupResult.updatedElevatorQueue
-          const newWaitingTimes = pickupResult.waitingTimes || []
-          
-          // Calculate remaining people (original floor queue minus picked up people)
-          const remainingPeople = currentFloorQueue.filter(person => 
-            !pickupResult.updatedElevatorQueue.some(picked => picked.id === person.id) ||
-            elevator.elevatorQueue.some(existing => existing.id === person.id)
-          )
-          
-          // Update the state
-          const updatedFloorQueues = [...simulator.floorQueues]
-          updatedFloorQueues[elevator.currentFloor] = remainingPeople
-          
-          const updatedElevators = simulator.elevators.map((elev, idx) => 
-            elev.id === elevator.id 
-              ? { ...elev, elevatorQueue: updatedElevatorQueue }
-              : elev
-          )
-          
-          // Update waiting times log
-          const updatedWaitingTimes = [...simulator.waitingTimes, ...newWaitingTimes]
-          
-          set({
-            simulators: {
-              ...simulators,
-              [id]: {
-                ...simulator,
-                elevators: updatedElevators,
-                floorQueues: updatedFloorQueues,
-                waitingTimes: updatedWaitingTimes
-              }
+        // Update state
+        const updatedFloorQueues = [...simulator.floorQueues]
+        updatedFloorQueues[elevator.currentFloor] = updatedFloorQueue
+        
+        const updatedElevators = simulator.elevators.map((elev) => 
+          elev.id === elevator.id 
+            ? { ...elev, elevatorQueue: updatedElevatorQueue }
+            : elev
+        )
+        
+        const updatedWaitingTimes = [...simulator.waitingTimes, ...newWaitingTimes]
+        
+        set({
+          simulators: {
+            ...simulators,
+            [id]: {
+              ...simulator,
+              elevators: updatedElevators,
+              floorQueues: updatedFloorQueues,
+              waitingTimes: updatedWaitingTimes
             }
-          })
-        }
-      }
-      
-      // First priority: deliver people already in elevator to their destinations
-      if (elevator.elevatorQueue && elevator.elevatorQueue.length > 0) {
-        // Find the nearest destination floor in the current direction
-        let nearestDestination = -1
-        let shortestDistance = Infinity
-        
-        elevator.elevatorQueue.forEach(person => {
-          const distance = Math.abs(elevator.currentFloor - person.destinationFloor)
-          if (distance < shortestDistance) {
-            shortestDistance = distance
-            nearestDestination = person.destinationFloor
           }
         })
-        
-        if (nearestDestination !== -1) {
-          get().moveElevatorToFloor(id, elevator.id, nearestDestination)
+      }
+      
+      // Priority 1: Deliver passengers (always prioritize current load)
+      if (elevator.elevatorQueue && elevator.elevatorQueue.length > 0) {
+        const nextDestination = get().findOptimalDropoffFloor(elevator)
+        if (nextDestination !== -1) {
+          get().moveElevatorToFloor(id, elevator.id, nextDestination)
           return
         }
       }
       
-      // Second priority: pick up people waiting on floors with advanced coordination
-      const targetFloor = get().findAdvancedTargetFloor(id, elevator)
-      
+      // Priority 2: Smart pickup based on system efficiency
+      const targetFloor = get().findOptimalPickupFloor(id, elevator)
       if (targetFloor !== -1) {
         get().moveElevatorToFloor(id, elevator.id, targetFloor)
       }
     })
   },
 
-  findAdvancedTargetFloor: (id, elevator) => {
+  findOptimalDropoffFloor: (elevator) => {
+    // Find the most efficient dropoff floor for current passengers
+    if (!elevator.elevatorQueue || elevator.elevatorQueue.length === 0) return -1
+    
+    // Group passengers by destination floor
+    const destinationGroups = {}
+    elevator.elevatorQueue.forEach(person => {
+      if (!destinationGroups[person.destinationFloor]) {
+        destinationGroups[person.destinationFloor] = 0
+      }
+      destinationGroups[person.destinationFloor]++
+    })
+    
+    // Find the closest floor with the most passengers
+    let bestFloor = -1
+    let bestScore = -1
+    
+    Object.keys(destinationGroups).forEach(floorStr => {
+      const floor = parseInt(floorStr)
+      const passengerCount = destinationGroups[floor]
+      const distance = Math.abs(elevator.currentFloor - floor)
+      
+      // Score: prioritize more passengers, penalize distance
+      const score = passengerCount * 5 - distance
+      
+      if (score > bestScore) {
+        bestScore = score
+        bestFloor = floor
+      }
+    })
+    
+    return bestFloor
+  },
+
+  findOptimalPickupFloor: (id, elevator) => {
     const { simulators } = get()
     const simulator = simulators[id]
     
     if (!simulator) return -1
     
-    // Helper function to check if other elevators are already heading to a floor
-    const isFloorAlreadyTargeted = (targetFloor, excludeElevatorId) => {
-      return simulator.elevators.some(otherElevator => {
-        if (otherElevator.id === excludeElevatorId || !otherElevator.isAnimating) return false
-        
-        // Check if the other elevator will pass through or stop at this floor
-        const willPassThrough = (
-          (otherElevator.currentFloor < targetFloor && otherElevator.direction === 'up') ||
-          (otherElevator.currentFloor > targetFloor && otherElevator.direction === 'down')
-        )
-        
-        return otherElevator.currentFloor === targetFloor || willPassThrough
-      })
-    }
-    
-    // Helper function to get elevator direction based on passengers
-    const getElevatorDirection = (elevatorQueue, currentFloor) => {
-      if (!elevatorQueue || elevatorQueue.length === 0) return null
-      
-      const upCount = elevatorQueue.filter(person => person.destinationFloor > currentFloor).length
-      const downCount = elevatorQueue.filter(person => person.destinationFloor < currentFloor).length
-      
-      if (upCount > downCount) return 'up'
-      if (downCount > upCount) return 'down'
-      return null
-    }
-    
-    // Helper function to count people going in specific direction
-    const countPeopleInDirection = (floorQueue, direction, currentFloor) => {
-      if (!floorQueue) return 0
-      return floorQueue.filter(person => {
-        const personDirection = person.destinationFloor > currentFloor ? 'up' : 'down'
-        return personDirection === direction
-      }).length
-    }
-    
-    const elevatorDirection = getElevatorDirection(elevator.elevatorQueue, elevator.currentFloor)
     let bestFloor = -1
     let bestScore = -1
     
-    // Scan all floors for optimization opportunities
+    // Analyze all floors for pickup opportunities
     for (let floor = 0; floor < simulator.floorCount; floor++) {
       if (floor === elevator.currentFloor) continue
       
       const floorQueue = simulator.floorQueues[floor]
       if (!floorQueue || floorQueue.length === 0) continue
       
-      // Calculate distance penalty
+      // Calculate base score: passenger count vs distance
+      const passengerCount = floorQueue.length
       const distance = Math.abs(elevator.currentFloor - floor)
+      let score = passengerCount * 10 - distance * 2
       
-      // If elevator has a direction preference, prioritize floors in that direction
-      let compatiblePeople = 0
-      let totalPeople = floorQueue.length
+      // Bonus for floors with many people (high demand)
+      if (passengerCount >= 5) score += 15
+      if (passengerCount >= 8) score += 25
       
-      if (elevatorDirection) {
-        compatiblePeople = countPeopleInDirection(floorQueue, elevatorDirection, floor)
-        
-        // Skip floors that don't have compatible people unless no other options
-        if (compatiblePeople === 0) continue
+      // Check if other elevators are already targeting this floor
+      const otherElevatorsTargeting = simulator.elevators.filter(otherElev => 
+        otherElev.id !== elevator.id && 
+        otherElev.isAnimating &&
+        get().willElevatorVisitFloor(otherElev, floor)
+      )
+      
+      // Coordination bonus/penalty
+      if (otherElevatorsTargeting.length === 0) {
+        // No competition - bonus
+        score += 10
       } else {
-        compatiblePeople = totalPeople
-      }
-      
-      // Check if other elevators are handling this floor
-      const isTargeted = isFloorAlreadyTargeted(floor, elevator.id)
-      
-      // Advanced coordination logic
-      if (isTargeted) {
-        // Check if there are enough people for multiple elevators
-        const otherElevatorCapacity = simulator.elevators
-          .filter(e => e.id !== elevator.id && e.isAnimating)
-          .reduce((sum, e) => sum + (ELEVATOR_CAPACITY - e.elevatorQueue.length), 0)
+        // Calculate if we need multiple elevators
+        const totalCapacityNeeded = passengerCount
+        const otherElevatorsCapacity = otherElevatorsTargeting.reduce((sum, otherElev) => 
+          sum + (ELEVATOR_CAPACITY - otherElev.elevatorQueue.length), 0
+        )
         
-        // If there are more compatible people than other elevators can handle, go anyway
-        if (compatiblePeople <= otherElevatorCapacity) continue
+        if (totalCapacityNeeded > otherElevatorsCapacity) {
+          // Still need more capacity - small bonus
+          score += 5
+        } else {
+          // Other elevators can handle it - large penalty
+          score -= 20
+        }
       }
       
-      // Calculate score: prioritize more people, shorter distance, and direction compatibility
-      let score = compatiblePeople * 10 - distance
-      
-      // Bonus for direction alignment
-      if (elevatorDirection) {
-        const floorDirection = floor > elevator.currentFloor ? 'up' : 'down'
-        if (floorDirection === elevatorDirection) {
-          score += 5
-        }
+      // Time efficiency: prefer floors that create efficient routes
+      if (elevator.elevatorQueue.length > 0) {
+        // Check if this floor is "on the way" to passenger destinations
+        const avgDestination = elevator.elevatorQueue.reduce((sum, p) => sum + p.destinationFloor, 0) / elevator.elevatorQueue.length
+        const isOnTheWay = (elevator.currentFloor < floor && floor < avgDestination) || 
+                          (elevator.currentFloor > floor && floor > avgDestination)
+        
+        if (isOnTheWay) score += 8
       }
       
       if (score > bestScore) {
@@ -566,6 +533,20 @@ const useSimulatorStore = create((set, get) => ({
     }
     
     return bestFloor
+  },
+
+  willElevatorVisitFloor: (elevator, targetFloor) => {
+    // Check if an elevator will visit a specific floor based on its current state
+    if (!elevator.isAnimating) return false
+    
+    // Simple check: if elevator is moving towards the floor
+    const movingUp = elevator.direction === 'up'
+    const movingDown = elevator.direction === 'down'
+    
+    if (movingUp && targetFloor > elevator.currentFloor) return true
+    if (movingDown && targetFloor < elevator.currentFloor) return true
+    
+    return false
   },
 
   moveElevatorToFloor: (id, elevatorId, targetFloor) => {
@@ -587,10 +568,20 @@ const useSimulatorStore = create((set, get) => ({
     // Capture waitTime at the start to avoid timing inconsistencies
     const capturedWaitTime = waitTime
     
-    // Start animation
+    // FIX TELEPORTATION: Store start floor and target, don't update currentFloor immediately
+    const startFloor = elevator.currentFloor
+    
+    // Start animation - keep currentFloor at start position for proper CSS animation
     const updatedElevators = simulator.elevators.map((elev, idx) => 
       idx === elevatorId 
-        ? { ...elev, isAnimating: true, currentFloor: targetFloor, direction, animationDuration: movementTime }
+        ? { 
+            ...elev, 
+            isAnimating: true, 
+            startFloor, // Track where animation started
+            targetFloor, // Track where we're going
+            direction, 
+            animationDuration: movementTime 
+          }
         : elev
     )
     
@@ -630,10 +621,17 @@ const useSimulatorStore = create((set, get) => ({
         const updatedWaitingTimes = [...currentSim.waitingTimes, ...newWaitingTimes]
         const updatedTravelTimes = [...currentSim.travelTimes, ...newTravelTimes]
         
-        // Update this elevator's state
+        // Update this elevator's state - NOW set currentFloor to final position
         const updatedElevators = currentSim.elevators.map((elev, idx) => 
           idx === elevatorId 
-            ? { ...elev, isAnimating: false, elevatorQueue: updatedElevatorQueue }
+            ? { 
+                ...elev, 
+                isAnimating: false, 
+                currentFloor: targetFloor, // Set final position after animation
+                elevatorQueue: updatedElevatorQueue,
+                startFloor: undefined, // Clear animation tracking
+                targetFloor: undefined // Clear animation tracking
+              }
             : elev
         )
         
@@ -655,6 +653,21 @@ const useSimulatorStore = create((set, get) => ({
         setTimeout(() => {
           get().processElevatorMovement(id)
         }, capturedWaitTime)
+        
+        // FIX STUCK PASSENGERS: Add safety check to ensure processing continues
+        // If elevator still has passengers after a longer delay, force reprocessing
+        setTimeout(() => {
+          const { simulators: safetyCheckSimulators } = get()
+          const safetyCheckSim = safetyCheckSimulators[id]
+          if (safetyCheckSim) {
+            const safetyCheckElevator = safetyCheckSim.elevators[elevatorId]
+            if (safetyCheckElevator && !safetyCheckElevator.isAnimating && 
+                safetyCheckElevator.elevatorQueue.length > 0) {
+              console.warn(`[STUCK_PASSENGER_FIX] Elevator ${elevatorId} may be stuck with passengers, forcing reprocess`)
+              get().processElevatorMovement(id)
+            }
+          }
+        }, movementTime + capturedWaitTime + 1000) // Extra safety delay
       }
     }, movementTime)
   },

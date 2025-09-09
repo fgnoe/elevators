@@ -8,46 +8,39 @@ import {useEffect, useState} from "react";
 
 
 function App() {
-  const { simulators, floorCount, setFloorCount, elevatorCount, setElevatorCount, elevatorSpeed, setElevatorSpeed, startSimulation } = useAppStore()
-  const { areAllSimulatorsEmpty, getPerformanceReport } = useSimulatorStore()
+  const { simulators, floorCount, setFloorCount, elevatorCount, setElevatorCount, elevatorSpeed, setElevatorSpeed, startSimulation, isSimulationRunning } = useAppStore()
+  const { getPerformanceReport } = useSimulatorStore()
   
   const [showReportModal, setShowReportModal] = useState(false)
   const [reportData, setReportData] = useState(null)
-  const [hasShownReport, setHasShownReport] = useState(false)
 
     useEffect(() => {
         setElevatorCount(3)
     }, []);
 
-    // Check if all simulators are empty and show report
+    // Handle timed report - show report 36 seconds after simulation starts
     useEffect(() => {
-      const checkInterval = setInterval(() => {
-        if (!hasShownReport && areAllSimulatorsEmpty()) {
+      if (isSimulationRunning) {
+        const reportTimer = setTimeout(() => {
           const report = getPerformanceReport()
-          // Only show report if there's actual data (people were processed)
-          const hasData = Object.values(report).some(data => data.totalPeople > 0)
-          if (hasData) {
-            setReportData(report)
-            setShowReportModal(true)
-            setHasShownReport(true)
-          }
-        }
-      }, 1000) // Check every second
+          setReportData(report)
+          setShowReportModal(true)
+        }, 36000) // 36 seconds
+      }
+    }, [isSimulationRunning])
 
-      return () => clearInterval(checkInterval)
-    }, [areAllSimulatorsEmpty, getPerformanceReport, hasShownReport])
-
-    // Reset report flag when simulation starts
+    // Reset report when new simulation starts
     useEffect(() => {
-      setHasShownReport(false)
-      setShowReportModal(false)
-    }, [startSimulation])
+      if (isSimulationRunning) {
+        setShowReportModal(false)
+      }
+    }, [isSimulationRunning])
   return (
     <div className="App">
       <Timeline />
       <div className="controls">
         <div>
-          <label>Floors: {floorCount}</label>
+          <label>Pisos: {floorCount}</label>
           <input 
             type="range" 
             min="4"
@@ -57,7 +50,7 @@ function App() {
           />
         </div>
         <div>
-          <label>Elevators: {elevatorCount}</label>
+          <label>Elevadores: {elevatorCount}</label>
           <input 
             type="range" 
             min="1"
@@ -67,7 +60,7 @@ function App() {
           />
         </div>
         <div>
-          <label>Speed: {elevatorSpeed}ms</label>
+          <label>Velocidad: {elevatorSpeed}ms</label>
           <input 
             type="range" 
             min="1"
@@ -76,7 +69,9 @@ function App() {
             onChange={(e) => setElevatorSpeed(401 - parseInt(e.target.value))}
           />
         </div>
-        <button onClick={startSimulation}>Start Simulation</button>
+        <button onClick={startSimulation} disabled={isSimulationRunning}>
+          {isSimulationRunning ? 'Simulación en Curso...' : 'Iniciar Simulación'}
+        </button>
       </div>
       <div className="simulators-container">
         {simulators.map(simulator => (
@@ -89,6 +84,18 @@ function App() {
         onClose={() => setShowReportModal(false)}
         reportData={reportData}
       />
+      
+      <footer className="bottom-banner">
+        <span>Hecho por Noe Flores</span>
+        <div className="footer-links">
+          <a href="https://github.com/fgnoe/elevators" target="_blank" rel="noopener noreferrer">
+            GitHub
+          </a>
+          <a href="https://www.linkedin.com/in/nnflores/" target="_blank" rel="noopener noreferrer">
+            LinkedIn
+          </a>
+        </div>
+      </footer>
     </div>
   )
 }
